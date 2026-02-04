@@ -6,7 +6,7 @@ def get_replies(post_url, max_comments=1000):
 
     comments = []
 
-    # Extraer ID del tweet
+    # Extraer id del tweet
     tweet_id = post_url.split("/")[-1]
 
     query = f"conversation_id:{tweet_id}"
