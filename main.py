@@ -1,22 +1,22 @@
 from scraper.x_scraper import get_replies
-from analyzer.exact_matcher import find_exact_matches
+import config
 
 
 def main():
 
-    post_url = input("url del post de X ")
-    target_text = input("texto exacto a buscar ")
+    replies = get_replies(
+        config.POST_URL,
+        config.TARGET_TEXTS,
+        config.MAX_SCROLL
+    )
 
-    comments = get_replies(post_url)
+    print("\nRESULTADOS:\n")
 
-    matches = find_exact_matches(comments, target_text)
+    if not replies:
+        print("No hubo coincidencias")
 
-    matches.sort(key=lambda x: x.date)
-
-    print("\nResultados:\n")
-
-    for match in matches:
-        print(f"{match.username} | {match.text} // {match.date}")
+    for r in replies:
+        print(r)
 
 
 if __name__ == "__main__":
