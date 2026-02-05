@@ -1,22 +1,27 @@
-from scraper.x_scraper import get_replies
-import config
+from services.x_api_service import get_post_replies
+from filters.text_filter import filter_valid_comments
+from filters.participation_filter import first_participation_only
+from logic.winner_selector import select_winners
 
 
 def main():
 
-    replies = get_replies(
-        config.POST_URL,
-        config.TARGET_TEXTS,
-        config.MAX_SCROLL
-    )
+    post_url = input("URL del post: ")
+    correct_answer = input("Respuesta correcta: ")
+    winners_count = int(input("Cantidad de ganadores: "))
 
-    print("\nRESULTADOS:\n")
+    comments = get_post_replies(post_url)
 
-    if not replies:
-        print("No hubo coincidencias")
+    valid_comments = filter_valid_comments(comments, correct_answer)
 
-    for r in replies:
-        print(r)
+    unique_comments = first_participation_only(valid_comments)
+
+    winners = select_winners(unique_comments, winners_count)
+
+    print("\nGANADORES:\n")
+
+    for w in winners:
+        print(w.format_output())
 
 
 if __name__ == "__main__":
