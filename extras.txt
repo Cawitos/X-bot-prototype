@@ -1,1 +1,3 @@
 https://x.com/StakeColombia/status/2019427568085295294
+
+set X_BEARER_TOKEN=token
