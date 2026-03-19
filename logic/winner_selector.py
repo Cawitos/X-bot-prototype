@@ -1,5 +1,14 @@
+import random
+
+
 def select_winners(comments, winners_count):
 
-    comments.sort(key=lambda x: x.created_at)
+    if not comments:
+        return []
 
-    return comments[:winners_count]
+    # Si hay menos comentarios que ganadores pedidos
+    if len(comments) <= winners_count:
+        return comments
+
+    # Seleccion aleatoria sin repetidos
+    return random.sample(comments, winners_count)

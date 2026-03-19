@@ -9,10 +9,14 @@ def get_post_replies(post_url):
 
     response = get_replies(tweet_id)
 
+    if "data" not in response:
+        print("No se encontraron replies para este tweet.")
+        return []
+
     tweets_data = response.get("data", [])
     users_data = response.get("includes", {}).get("users", [])
 
-    # Crear mapa author_id → username
+    # Mapa author_id → username
     users_map = {user["id"]: user["username"] for user in users_data}
 
     comments = []
@@ -20,7 +24,10 @@ def get_post_replies(post_url):
     for item in tweets_data:
 
         author_id = item["author_id"]
-        username = users_map.get(author_id, "unknown")
+        username = users_map.get(author_id)
+
+        if not username:
+            continue  # evitar usuarios desconocidos
 
         comments.append(
             Comment(

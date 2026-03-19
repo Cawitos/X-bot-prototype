@@ -24,5 +24,5 @@ def main():
         print(w.format_output())
 
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     main()
