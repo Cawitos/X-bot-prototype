@@ -20,9 +20,21 @@ class PostRequest(BaseModel):
 
 @app.post("/analizar")
 def analizar(data: PostRequest):
-    resultado = analizar_post(
-        data.url,
-        data.respuesta,
-        data.ganadores
-    )
-    return {"ganadores": resultado}
+    print("Request:", data)
+
+    try:
+        resultado = analizar_post(
+            data.url,
+            data.respuesta,
+            data.ganadores
+        )
+
+        print("Resultado:", resultado)
+        return {"ganadores": resultado}
+
+    except Exception as e:
+        print("ERROR:", str(e))
+        return {
+            "error": str(e),
+            "mensaje": "Error interno en el servidor"
+        }
