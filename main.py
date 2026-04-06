@@ -5,15 +5,15 @@ from filters.participation_filter import first_participation_only
 from logic.winner_selector import select_winners
 
 
-#Regex globales
+# Regex globales
 STAKE_REGEX = re.compile(r"Stake:\s*(\w+)", re.IGNORECASE)
 BET_REGEX = re.compile(r"(sport:\d+|casino:\d+)", re.IGNORECASE)
 
 
 def analizar_post(
     url,
-    correct_answer=None,
-    winners_count=None,
+    respuesta=None,
+    ganadores=None,
     extract_usernames=False,
     extract_bet_ids=False,
     bet_type="all"
@@ -54,15 +54,15 @@ def analizar_post(
 
     response_data = {}
 
-    # LÓGICA ACTUAL DE GANADORES (solo si aplica)
-    if correct_answer and winners_count:
-        valid_comments = filter_valid_comments(comments, correct_answer)
+    # LÓGICA DE GANADORES
+    if respuesta and ganadores:
+        valid_comments = filter_valid_comments(comments, respuesta)
         print("VALID COMMENTS:", len(valid_comments))
 
         unique_comments = first_participation_only(valid_comments)
         print("UNIQUE COMMENTS:", len(unique_comments))
 
-        winners = select_winners(unique_comments, winners_count)
+        winners = select_winners(unique_comments, ganadores)
         print("WINNERS:", len(winners))
 
         if not winners:
@@ -89,16 +89,16 @@ def analizar_post(
     return response_data
 
 
-# Modo consola(testing)
+# Modo consola (testing)
 def main():
     post_url = input("URL del post: ")
-    correct_answer = input("Respuesta correcta: ")
-    winners_count = int(input("Cantidad de ganadores: "))
+    respuesta = input("Respuesta correcta: ")
+    ganadores = int(input("Cantidad de ganadores: "))
 
     result = analizar_post(
         post_url,
-        correct_answer,
-        winners_count,
+        respuesta,
+        ganadores,
         extract_usernames=True,
         extract_bet_ids=True
     )

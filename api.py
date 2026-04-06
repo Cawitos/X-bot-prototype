@@ -12,14 +12,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 class PostRequest(BaseModel):
     url: str
     respuesta: str | None = None
     ganadores: int | None = None
-
     extract_usernames: bool = False
     extract_bet_ids: bool = False
-    bet_type: str = "all" 
+    bet_type: str = "all"
+
 
 @app.post("/analizar")
 def analizar(data: PostRequest):
