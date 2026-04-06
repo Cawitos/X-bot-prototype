@@ -11,7 +11,7 @@ BET_REGEX = re.compile(r"(sport:\d+|casino:\d+)", re.IGNORECASE)
 
 
 def analizar_post(
-    post_url,
+    url,
     correct_answer=None,
     winners_count=None,
     extract_usernames=False,
@@ -19,7 +19,7 @@ def analizar_post(
     bet_type="all"
 ):
     # Obtener datos desde API
-    response = get_post_replies(post_url)
+    response = get_post_replies(url)
 
     comments = response.get("comments", [])
     meta = response.get("meta", {})
