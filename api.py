@@ -14,9 +14,12 @@ app.add_middleware(
 )
 class PostRequest(BaseModel):
     url: str
-    respuesta: str
-    ganadores: int
+    respuesta: str | None = None
+    ganadores: int | None = None
 
+    extract_usernames: bool = False
+    extract_bet_ids: bool = False
+    bet_type: str = "all" 
 
 @app.post("/analizar")
 def analizar(data: PostRequest):
@@ -24,17 +27,24 @@ def analizar(data: PostRequest):
 
     try:
         resultado = analizar_post(
-            data.url,
-            data.respuesta,
-            data.ganadores
+            url=data.url,
+            respuesta=data.respuesta,
+            ganadores=data.ganadores,
+            extract_usernames=data.extract_usernames,
+            extract_bet_ids=data.extract_bet_ids,
+            bet_type=data.bet_type
         )
 
         print("Resultado:", resultado)
-        return {"ganadores": resultado}
+
+        return {
+            "status": "ok",
+            "data": resultado
+        }
 
     except Exception as e:
         print("ERROR:", str(e))
         return {
-            "error": str(e),
-            "mensaje": "Error interno en el servidor"
+            "status": "error",
+            "message": str(e)
         }

@@ -4,14 +4,20 @@ from utils.url_parser import extract_tweet_id
 
 
 def get_post_replies(post_url):
-
     tweet_id = extract_tweet_id(post_url)
 
     response = get_replies(tweet_id)
 
-    if "data" not in response:
-        print("No se encontraron replies para este tweet.")
-        return []
+    # Manejo de errores
+    if not response or "data" not in response:
+        return {
+            "comments": [],
+            "meta": {
+                "tweet_id": tweet_id,
+                "total_raw": 0,
+                "error": "No data returned from X API"
+            }
+        }
 
     tweets_data = response.get("data", [])
     users_data = response.get("includes", {}).get("users", [])
@@ -22,19 +28,25 @@ def get_post_replies(post_url):
     comments = []
 
     for item in tweets_data:
-
-        author_id = item["author_id"]
+        author_id = item.get("author_id")
         username = users_map.get(author_id)
 
         if not username:
-            continue  # evitar usuarios desconocidos
+            continue
 
         comments.append(
             Comment(
                 username=username,
-                text=item["text"],
-                created_at=item["created_at"]
+                text=item.get("text", ""),
+                created_at=item.get("created_at")
             )
         )
 
-    return comments
+    return {
+        "comments": comments,
+        "meta": {
+            "tweet_id": tweet_id,
+            "total_raw": len(tweets_data),
+            "total_valid": len(comments)
+        }
+    }
