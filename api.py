@@ -51,8 +51,10 @@ def analizar(data: PostRequest):
             "status": "error",
             "message": str(e)
         }
+
 @app.post("/export")
 def export(data: PostRequest):
+
     result = analizar_post(
         url=data.url,
         respuesta=data.respuesta,
@@ -66,12 +68,17 @@ def export(data: PostRequest):
 
     with open(file_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["type", "value"])
 
-        for u in result.get("usernames", []):
-            writer.writerow(["username", u])
+        # HEADERS
+        writer.writerow(["X Username", "Stake ID", "Comentario"])
 
-        for b in result.get("bet_ids", []):
-            writer.writerow(["bet_id", b])
+        for item in result.get("ganadores", []):
+            parts = item.split("|")
+
+            x_user = parts[0].strip() if len(parts) > 0 else ""
+            stake = parts[1].replace("Stake:", "").strip() if len(parts) > 1 else ""
+            comment = parts[2].strip() if len(parts) > 2 else ""
+
+            writer.writerow([x_user, stake, comment])
 
     return FileResponse(file_path, filename="results.csv")

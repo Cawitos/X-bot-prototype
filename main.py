@@ -43,11 +43,9 @@ def analizar_post(
         # USERNAMES
         if extract_usernames:
             stake_matches = STAKE_REGEX.findall(text)
-            x_matches = X_USER_REGEX.findall(text)
-
             usernames.extend(stake_matches)
-            usernames.extend(x_matches)
-
+            usernames.append(f"@{c.username}")
+            
         # BET IDS
         if extract_bet_ids:
             matches = BET_REGEX.findall(text)
