@@ -8,6 +8,7 @@ from logic.winner_selector import select_winners
 # Regex globales
 STAKE_REGEX = re.compile(r"Stake:\s*(\w+)", re.IGNORECASE)
 BET_REGEX = re.compile(r"(sport:\d+|casino:\d+)", re.IGNORECASE)
+X_USER_REGEX = re.compile(r"@\w+")
 
 
 def analizar_post(
@@ -28,20 +29,26 @@ def analizar_post(
     print("TOTAL RAW:", meta.get("total_raw"))
     print("TOTAL COMMENTS:", len(comments))
 
-    # Inicializar contenedores
     usernames = []
     bet_ids = []
+    winners = []
+    response_data = {}
 
-    # Extracción sobre TODOS los comentarios
+    # =========================
+    #  EXTRACCIÓN GENERAL
+    # =========================
     for c in comments:
         text = getattr(c, "text", "")
 
-        # usernames
+        # USERNAMES
         if extract_usernames:
-            matches = STAKE_REGEX.findall(text)
-            usernames.extend(matches)
+            stake_matches = STAKE_REGEX.findall(text)
+            x_matches = X_USER_REGEX.findall(text)
 
-        # bet ids
+            usernames.extend(stake_matches)
+            usernames.extend(x_matches)
+
+        # BET IDS
         if extract_bet_ids:
             matches = BET_REGEX.findall(text)
 
@@ -52,9 +59,11 @@ def analizar_post(
 
             bet_ids.extend(matches)
 
-    response_data = {}
+    # =========================
+    #  LÓGICA DE GANADORES
+    # =========================
 
-    # LÓGICA DE GANADORES
+    # CASO 1: respuesta + cantidad → random winners
     if respuesta and ganadores:
         valid_comments = filter_valid_comments(comments, respuesta)
         print("VALID COMMENTS:", len(valid_comments))
@@ -63,21 +72,55 @@ def analizar_post(
         print("UNIQUE COMMENTS:", len(unique_comments))
 
         winners = select_winners(unique_comments, ganadores)
-        print("WINNERS:", len(winners))
 
-        if not winners:
-            response_data["ganadores"] = ["No hubo ganadores"]
-        else:
-            response_data["ganadores"] = [w.format_output() for w in winners]
+    # CASO 2: solo respuesta → TODOS los válidos
+    elif respuesta and not ganadores:
+        valid_comments = filter_valid_comments(comments, respuesta)
+        print("VALID COMMENTS:", len(valid_comments))
 
-    # Features
+        winners = valid_comments
+
+    # CASO 3: sin respuesta → TODOS los comentarios
+    elif not respuesta:
+        winners = comments
+
+    # =========================
+    # 🧾 FORMATEO GANADORES
+    # =========================
+    formatted_winners = []
+
+    for w in winners:
+        text = getattr(w, "text", "")
+
+        # X username
+        x_user = f"@{getattr(w, 'username', 'unknown')}"
+
+        # Stake ID
+        stake_match = STAKE_REGEX.search(text)
+        stake_user = stake_match.group(1) if stake_match else "N/A"
+
+        formatted_winners.append(
+            f"{x_user} | Stake: {stake_user} | {text}"
+        )
+
+    if formatted_winners:
+        response_data["ganadores"] = formatted_winners
+    else:
+        response_data["ganadores"] = ["No hubo resultados"]
+
+    # =========================
+    #  FEATURES EXTRA
+    # =========================
+
     if extract_usernames:
         response_data["usernames"] = list(set(usernames))
 
     if extract_bet_ids:
         response_data["bet_ids"] = list(set(bet_ids))
 
-    # Stats
+    # =========================
+    #  STATS
+    # =========================
     response_data["stats"] = {
         "tweet_id": meta.get("tweet_id"),
         "total_raw": meta.get("total_raw"),
@@ -89,15 +132,19 @@ def analizar_post(
     return response_data
 
 
-# Modo consola (testing)
+# =========================
+#  MODO CONSOLA (TEST)
+# =========================
 def main():
     post_url = input("URL del post: ")
-    respuesta = input("Respuesta correcta: ")
-    ganadores = int(input("Cantidad de ganadores: "))
+    respuesta = input("Respuesta correcta (opcional): ")
+    ganadores_input = input("Cantidad de ganadores (opcional): ")
+
+    ganadores = int(ganadores_input) if ganadores_input else None
 
     result = analizar_post(
         post_url,
-        respuesta,
+        respuesta if respuesta else None,
         ganadores,
         extract_usernames=True,
         extract_bet_ids=True
