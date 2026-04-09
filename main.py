@@ -6,7 +6,7 @@ from logic.winner_selector import select_winners
 
 
 # Regex globales
-STAKE_REGEX = re.compile(r"Stake:\s*(\w+)", re.IGNORECASE)
+STAKE_REGEX = re.compile(r"Stake ID:\s*(\w+)", re.IGNORECASE)
 BET_REGEX = re.compile(r"(sport:\d+|casino:\d+)", re.IGNORECASE)
 X_USER_REGEX = re.compile(r"@\w+")
 
