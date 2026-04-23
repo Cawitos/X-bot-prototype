@@ -26,16 +26,22 @@ def normalizar_texto(texto):
 
 
 def parse_respuestas(respuesta):
-    return [normalizar_texto(r) for r in respuesta.split(",")]
+    return [
+        normalizar_texto(r)
+        for r in respuesta.split(",")
+        if r.strip() != ""
+    ]
 
 
 def comentario_valido_multiple(texto, respuestas_correctas):
     texto = normalizar_texto(texto)
 
-    palabras = re.split(r"[,\n]+", texto)
-    palabras = [p.strip() for p in palabras if p.strip()]
+    for resp in respuestas_correctas:
+        # busca palabra completa (evita falsos positivos)
+        if not re.search(rf"\b{re.escape(resp)}\b", texto):
+            return False
 
-    return set(respuestas_correctas).issubset(set(palabras))
+    return True
 
 
 # =========================
