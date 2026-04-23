@@ -1,15 +1,46 @@
 import re
 from services.x_api_service import get_post_replies
-from filters.text_filter import filter_valid_comments
 from filters.participation_filter import first_participation_only
 from logic.winner_selector import select_winners
 
 
-# Regex globales
-STAKE_REGEX = re.compile(r"Stake:\s*(\w+)", re.IGNORECASE)
+# =========================
+# REGEX
+# =========================
+
+STAKE_REGEX = re.compile(
+    r"(?:stake\s*id|user\s*id|id|user)[:\-]?\s*(\w+)",
+    re.IGNORECASE
+)
+
 BET_REGEX = re.compile(r"(sport:\d+|casino:\d+)", re.IGNORECASE)
 X_USER_REGEX = re.compile(r"@\w+")
 
+
+# =========================
+# HELPERS
+# =========================
+
+def normalizar_texto(texto):
+    return texto.lower().strip()
+
+
+def parse_respuestas(respuesta):
+    return [normalizar_texto(r) for r in respuesta.split(",")]
+
+
+def comentario_valido_multiple(texto, respuestas_correctas):
+    texto = normalizar_texto(texto)
+
+    palabras = re.split(r"[,\n]+", texto)
+    palabras = [p.strip() for p in palabras if p.strip()]
+
+    return set(respuestas_correctas).issubset(set(palabras))
+
+
+# =========================
+# MAIN LOGIC
+# =========================
 
 def analizar_post(
     url,
@@ -19,7 +50,9 @@ def analizar_post(
     extract_bet_ids=False,
     bet_type="all"
 ):
-    # Obtener datos desde API
+    # =========================
+    # OBTENER DATA
+    # =========================
     response = get_post_replies(url)
 
     comments = response.get("comments", [])
@@ -35,7 +68,7 @@ def analizar_post(
     response_data = {}
 
     # =========================
-    #  EXTRACCIÓN GENERAL
+    # EXTRACCIÓN GENERAL
     # =========================
     for c in comments:
         text = getattr(c, "text", "")
@@ -45,7 +78,7 @@ def analizar_post(
             stake_matches = STAKE_REGEX.findall(text)
             usernames.extend(stake_matches)
             usernames.append(f"@{c.username}")
-            
+
         # BET IDS
         if extract_bet_ids:
             matches = BET_REGEX.findall(text)
@@ -58,58 +91,77 @@ def analizar_post(
             bet_ids.extend(matches)
 
     # =========================
-    #  LÓGICA DE GANADORES
+    # LÓGICA DE GANADORES
     # =========================
 
-    # CASO 1: respuesta + cantidad → random winners
-    if respuesta and ganadores:
-        valid_comments = filter_valid_comments(comments, respuesta)
+    respuestas_correctas = parse_respuestas(respuesta) if respuesta else None
+    valid_comments = []
+
+    # CASO 1: HAY RESPUESTA
+    if respuesta:
+
+        for c in comments:
+            text = getattr(c, "text", "")
+
+            # RESPUESTA MULTIPLE
+            if "," in respuesta:
+                if comentario_valido_multiple(text, respuestas_correctas):
+                    valid_comments.append(c)
+
+            # RESPUESTA SIMPLE
+            else:
+                if normalizar_texto(respuesta) in normalizar_texto(text):
+                    valid_comments.append(c)
+
         print("VALID COMMENTS:", len(valid_comments))
 
         unique_comments = first_participation_only(valid_comments)
         print("UNIQUE COMMENTS:", len(unique_comments))
 
-        winners = select_winners(unique_comments, ganadores)
+        if ganadores:
+            winners = select_winners(unique_comments, ganadores)
+        else:
+            winners = unique_comments
 
-    # CASO 2: solo respuesta → TODOS los válidos
-    elif respuesta and not ganadores:
-        valid_comments = filter_valid_comments(comments, respuesta)
-        print("VALID COMMENTS:", len(valid_comments))
+    # CASO 2: NO HAY RESPUESTA → RANDOM PURO
+    else:
+        print("MODO RANDOM SIN RESPUESTA")
 
-        winners = valid_comments
+        unique_comments = first_participation_only(comments)
+        print("UNIQUE COMMENTS:", len(unique_comments))
 
-    # CASO 3: sin respuesta → TODOS los comentarios
-    elif not respuesta:
-        winners = comments
+        if ganadores:
+            winners = select_winners(unique_comments, ganadores)
+        else:
+            winners = unique_comments
 
     # =========================
-    # 🧾 FORMATEO GANADORES
+    # FORMATEO GANADORES (OBJETO)
     # =========================
     formatted_winners = []
 
     for w in winners:
         text = getattr(w, "text", "")
 
-        # X username
         x_user = f"@{getattr(w, 'username', 'unknown')}"
 
-        # Stake ID
         stake_match = STAKE_REGEX.search(text)
         stake_user = stake_match.group(1) if stake_match else "N/A"
 
-        formatted_winners.append(
-            f"{x_user} | Stake: {stake_user} | {text}"
-        )
+        formatted_winners.append({
+            "x_user": x_user,
+            "stake_id": stake_user,
+            "comment": text
+        })
 
     if formatted_winners:
         response_data["ganadores"] = formatted_winners
     else:
-        response_data["ganadores"] = ["No hubo resultados"]
+        response_data["ganadores"] = []
 
     # =========================
-    #  FEATURES EXTRA
+    # FEATURES EXTRA
     # =========================
-
     if extract_usernames:
         response_data["usernames"] = list(set(usernames))
 
@@ -117,7 +169,7 @@ def analizar_post(
         response_data["bet_ids"] = list(set(bet_ids))
 
     # =========================
-    #  STATS
+    # STATS
     # =========================
     response_data["stats"] = {
         "tweet_id": meta.get("tweet_id"),
@@ -131,11 +183,11 @@ def analizar_post(
 
 
 # =========================
-#  MODO CONSOLA (TEST)
+# MODO CONSOLA (TEST)
 # =========================
 def main():
     post_url = input("URL del post: ")
-    respuesta = input("Respuesta correcta (opcional): ")
+    respuesta = input("Respuesta correcta (opcional, separada por comas): ")
     ganadores_input = input("Cantidad de ganadores (opcional): ")
 
     ganadores = int(ganadores_input) if ganadores_input else None
@@ -153,7 +205,7 @@ def main():
     if "ganadores" in result:
         print("GANADORES:\n")
         for w in result["ganadores"]:
-            print(w)
+            print(f"{w['x_user']} | Stake: {w['stake_id']} | {w['comment']}")
 
     if "usernames" in result:
         print("\nUSERNAMES:\n")

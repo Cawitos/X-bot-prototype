@@ -7,6 +7,9 @@ import csv
 
 app = FastAPI()
 
+# =========================
+# CORS
+# =========================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,6 +18,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# =========================
+# REQUEST MODEL
+# =========================
 class PostRequest(BaseModel):
     url: str
     respuesta: str | None = None
@@ -24,6 +30,9 @@ class PostRequest(BaseModel):
     bet_type: str = "all"
 
 
+# =========================
+# ANALIZAR
+# =========================
 @app.post("/analizar")
 def analizar(data: PostRequest):
     print("Request:", data)
@@ -52,6 +61,10 @@ def analizar(data: PostRequest):
             "message": str(e)
         }
 
+
+# =========================
+# EXPORT CSV
+# =========================
 @app.post("/export")
 def export(data: PostRequest):
 
@@ -73,12 +86,10 @@ def export(data: PostRequest):
         writer.writerow(["X Username", "Stake ID", "Comentario"])
 
         for item in result.get("ganadores", []):
-            parts = item.split("|")
-
-            x_user = parts[0].strip() if len(parts) > 0 else ""
-            stake = parts[1].replace("Stake:", "").strip() if len(parts) > 1 else ""
-            comment = parts[2].strip() if len(parts) > 2 else ""
-
-            writer.writerow([x_user, stake, comment])
+            writer.writerow([
+                item.get("x_user", ""),
+                item.get("stake_id", ""),
+                item.get("comment", "")
+            ])
 
     return FileResponse(file_path, filename="results.csv")
