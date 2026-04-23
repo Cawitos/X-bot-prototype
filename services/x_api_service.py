@@ -8,7 +8,10 @@ def get_post_replies(post_url):
 
     response = get_replies(tweet_id)
 
-    if not response or not response.data:
+    # DEBUG
+    print("RAW RESPONSE:", response)
+
+    if not response or "data" not in response:
         return {
             "comments": [],
             "meta": {
@@ -18,15 +21,16 @@ def get_post_replies(post_url):
             }
         }
 
-    tweets_data = response.data
-    users_data = response.includes.get("users", []) if response.includes else []
+    tweets_data = response.get("data", [])
+    users_data = response.get("includes", {}).get("users", [])
 
-    users_map = {user.id: user.username for user in users_data}
+    users_map = {user["id"]: user["username"] for user in users_data}
 
     comments = []
 
     for item in tweets_data:
-        username = users_map.get(item.author_id)
+        author_id = item.get("author_id")
+        username = users_map.get(author_id)
 
         if not username:
             continue
@@ -34,8 +38,8 @@ def get_post_replies(post_url):
         comments.append(
             Comment(
                 username=username,
-                text=item.text,
-                created_at=item.created_at
+                text=item.get("text", ""),
+                created_at=item.get("created_at")
             )
         )
 
@@ -44,6 +48,6 @@ def get_post_replies(post_url):
         "meta": {
             "tweet_id": tweet_id,
             "total_raw": len(tweets_data),
-            "total_valid": len(comments)
+            "total_comments": len(comments)  
         }
     }
