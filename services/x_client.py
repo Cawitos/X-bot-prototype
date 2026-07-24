@@ -25,6 +25,13 @@ def get_replies(tweet_id):
 
     response = requests.get(url, headers=headers, params=params)
 
+    response = requests.get(url, headers=headers, params=params)
+
+    print("=" * 60)
+    print("STATUS:", response.status_code)
+    print(response.json())
+    print("=" * 60)
+
     if response.status_code != 200:
         raise Exception(
             f"Error API X: {response.status_code} - {response.text}"
