@@ -13,7 +13,7 @@ def get_replies(tweet_id):
         "Authorization": f"Bearer {bearer_token}"
     }
 
-    url = "https://api.x.com/2/tweets/search/recent"
+    url = "https://api.x.com/2/tweets/search/all"
 
     params = {
         "query": f"conversation_id:{tweet_id}",
