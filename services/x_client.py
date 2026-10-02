@@ -13,7 +13,10 @@ def get_replies(tweet_id):
         "Authorization": f"Bearer {bearer_token}"
     }
 
-    url = "https://api.x.com/2/tweets/search/all"
+    # Nota: "search/recent" solo trae respuestas de los últimos 7 días,
+    # pero está disponible en tier Basic. "search/all" (full-archive)
+    # ahora requiere Pro ($5,000/mes) o Enterprise ($42,000+/mes).
+    url = "https://api.x.com/2/tweets/search/recent"
 
     params = {
         "query": f"conversation_id:{tweet_id}",
@@ -22,8 +25,6 @@ def get_replies(tweet_id):
         "user.fields": "username",
         "max_results": 100
     }
-
-    response = requests.get(url, headers=headers, params=params)
 
     response = requests.get(url, headers=headers, params=params)
 

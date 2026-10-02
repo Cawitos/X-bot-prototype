@@ -28,6 +28,7 @@ class PostRequest(BaseModel):
     extract_usernames: bool = False
     extract_bet_ids: bool = False
     bet_type: str = "all"
+    blacklist: list[str] | None = None
 
 
 # =========================
@@ -44,7 +45,8 @@ def analizar(data: PostRequest):
             ganadores=data.ganadores,
             extract_usernames=data.extract_usernames,
             extract_bet_ids=data.extract_bet_ids,
-            bet_type=data.bet_type
+            bet_type=data.bet_type,
+            blacklist=data.blacklist
         )
 
         print("Resultado:", resultado)
@@ -74,7 +76,8 @@ def export(data: PostRequest):
         ganadores=data.ganadores,
         extract_usernames=data.extract_usernames,
         extract_bet_ids=data.extract_bet_ids,
-        bet_type=data.bet_type
+        bet_type=data.bet_type,
+        blacklist=data.blacklist
     )
 
     file_path = "results.csv"
@@ -82,14 +85,14 @@ def export(data: PostRequest):
     with open(file_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
 
-        # HEADERS
-        writer.writerow(["X Username", "Stake ID", "Comentario"])
+        writer.writerow(["X Username", "Stake ID", "Comentario", "Link"])
 
         for item in result.get("ganadores", []):
             writer.writerow([
                 item.get("x_user", ""),
                 item.get("stake_id", ""),
-                item.get("comment", "")
+                item.get("comment", ""),
+                item.get("comment_link", "")
             ])
 
     return FileResponse(file_path, filename="results.csv")

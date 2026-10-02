@@ -4,7 +4,7 @@ from utils.url_parser import extract_tweet_id
 from collections import Counter
 
 
-def get_post_replies(post_url):
+def get_post_replies(post_url, blacklist=None):
     tweet_id = extract_tweet_id(post_url)
 
     response = get_replies(tweet_id)
@@ -32,17 +32,15 @@ def get_post_replies(post_url):
     print("=" * 60)
 
     counter = Counter()
-
     users_map = {user["id"]: user["username"] for user in users_data}
+    blacklist_set = {b.lower().lstrip("@") for b in (blacklist or [])}
 
     comments = []
+    skipped_blacklist = 0
 
     for item in tweets_data:
         author_id = item.get("author_id")
         username = users_map.get(author_id)
-
-        if username:
-            counter[username] += 1
 
         print(
             author_id,
@@ -55,11 +53,18 @@ def get_post_replies(post_url):
         if not username:
             continue
 
+        if username.lower() in blacklist_set:
+            skipped_blacklist += 1
+            continue
+
+        counter[username] += 1
+
         comments.append(
             Comment(
                 username=username,
                 text=item.get("text", ""),
-                created_at=item.get("created_at")
+                created_at=item.get("created_at"),
+                tweet_id=item.get("id")
             )
         )
 
@@ -71,6 +76,7 @@ def get_post_replies(post_url):
 
     print("\nTOTAL USUARIOS ÚNICOS:", len(counter))
     print("TOTAL COMMENTS:", len(comments))
+    print("SALTADOS POR BLACKLIST:", skipped_blacklist)
     print("=" * 60)
 
     return {
@@ -78,6 +84,7 @@ def get_post_replies(post_url):
         "meta": {
             "tweet_id": tweet_id,
             "total_raw": len(tweets_data),
-            "total_comments": len(comments)
+            "total_comments": len(comments),
+            "skipped_blacklist": skipped_blacklist
         }
     }

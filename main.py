@@ -1,4 +1,5 @@
 import re
+from config import BLACKLISTED_USERS
 from services.x_api_service import get_post_replies
 from filters.participation_filter import first_participation_only
 from logic.winner_selector import select_winners
@@ -37,7 +38,6 @@ def comentario_valido_multiple(texto, respuestas_correctas):
     texto = normalizar_texto(texto)
 
     for resp in respuestas_correctas:
-        # busca palabra completa (evita falsos positivos)
         if not re.search(rf"\b{re.escape(resp)}\b", texto):
             return False
 
@@ -54,12 +54,20 @@ def analizar_post(
     ganadores=None,
     extract_usernames=False,
     extract_bet_ids=False,
-    bet_type="all"
+    bet_type="all",
+    blacklist=None
 ):
+    # =========================
+    # BLACKLIST (config + request)
+    # =========================
+    blacklist_final = BLACKLISTED_USERS | {
+        b.strip().lower().lstrip("@") for b in (blacklist or []) if b.strip()
+    }
+
     # =========================
     # OBTENER DATA
     # =========================
-    response = get_post_replies(url)
+    response = get_post_replies(url, blacklist=blacklist_final)
 
     comments = response.get("comments", [])
     meta = response.get("meta", {})
@@ -79,13 +87,11 @@ def analizar_post(
     for c in comments:
         text = getattr(c, "text", "")
 
-        # USERNAMES
         if extract_usernames:
             stake_matches = STAKE_REGEX.findall(text)
             usernames.extend(stake_matches)
             usernames.append(f"@{c.username}")
 
-        # BET IDS
         if extract_bet_ids:
             matches = BET_REGEX.findall(text)
 
@@ -103,18 +109,13 @@ def analizar_post(
     respuestas_correctas = parse_respuestas(respuesta) if respuesta else None
     valid_comments = []
 
-    # CASO 1: HAY RESPUESTA
     if respuesta:
-
         for c in comments:
             text = getattr(c, "text", "")
 
-            # RESPUESTA MULTIPLE
             if "," in respuesta:
                 if comentario_valido_multiple(text, respuestas_correctas):
                     valid_comments.append(c)
-
-            # RESPUESTA SIMPLE
             else:
                 if normalizar_texto(respuesta) in normalizar_texto(text):
                     valid_comments.append(c)
@@ -129,7 +130,6 @@ def analizar_post(
         else:
             winners = unique_comments
 
-    # CASO 2: NO HAY RESPUESTA → RANDOM PURO
     else:
         print("MODO RANDOM SIN RESPUESTA")
 
@@ -148,7 +148,6 @@ def analizar_post(
 
     for w in winners:
         text = getattr(w, "text", "")
-
         x_user = f"@{getattr(w, 'username', 'unknown')}"
 
         stake_match = STAKE_REGEX.search(text)
@@ -157,13 +156,12 @@ def analizar_post(
         formatted_winners.append({
             "x_user": x_user,
             "stake_id": stake_user,
-            "comment": text
+            "comment": text,
+            "comment_link": getattr(w, "url", None),
+            "tweet_id": getattr(w, "tweet_id", None)
         })
 
-    if formatted_winners:
-        response_data["ganadores"] = formatted_winners
-    else:
-        response_data["ganadores"] = []
+    response_data["ganadores"] = formatted_winners
 
     # =========================
     # FEATURES EXTRA
@@ -182,7 +180,8 @@ def analizar_post(
         "total_raw": meta.get("total_raw"),
         "total_comments": len(comments),
         "unique_usernames": len(set(usernames)),
-        "unique_bet_ids": len(set(bet_ids))
+        "unique_bet_ids": len(set(bet_ids)),
+        "skipped_blacklist": meta.get("skipped_blacklist", 0)
     }
 
     return response_data
@@ -211,7 +210,7 @@ def main():
     if "ganadores" in result:
         print("GANADORES:\n")
         for w in result["ganadores"]:
-            print(f"{w['x_user']} | Stake: {w['stake_id']} | {w['comment']}")
+            print(f"{w['x_user']} | Stake: {w['stake_id']} | {w['comment']} | {w['comment_link']}")
 
     if "usernames" in result:
         print("\nUSERNAMES:\n")
