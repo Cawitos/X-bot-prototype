@@ -38,7 +38,8 @@ def comentario_valido_multiple(texto, respuestas_correctas):
     texto = normalizar_texto(texto)
 
     for resp in respuestas_correctas:
-        if not re.search(rf"\b{re.escape(resp)}\b", texto):
+        patron = rf"(?<!\w){re.escape(resp)}(?!\w)"
+        if not re.search(patron, texto):
             return False
 
     return True
