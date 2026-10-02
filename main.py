@@ -2,6 +2,7 @@ import re
 from config import BLACKLISTED_USERS
 from services.x_api_service import get_post_replies
 from filters.participation_filter import first_participation_only
+from filters.multiple_comment_filter import filter_multiple_comments
 from logic.winner_selector import select_winners
 
 
@@ -38,6 +39,8 @@ def comentario_valido_multiple(texto, respuestas_correctas):
     texto = normalizar_texto(texto)
 
     for resp in respuestas_correctas:
+        # (?<!\w) y (?!\w) en vez de \b, para que funcione con
+        # respuestas que empiezan en símbolo como "#stakecolombia"
         patron = rf"(?<!\w){re.escape(resp)}(?!\w)"
         if not re.search(patron, texto):
             return False
@@ -56,7 +59,8 @@ def analizar_post(
     extract_usernames=False,
     extract_bet_ids=False,
     bet_type="all",
-    blacklist=None
+    blacklist=None,
+    excluir_multiples=False
 ):
     # =========================
     # BLACKLIST (config + request)
@@ -76,6 +80,17 @@ def analizar_post(
     print("TWEET ID:", meta.get("tweet_id"))
     print("TOTAL RAW:", meta.get("total_raw"))
     print("TOTAL COMMENTS:", len(comments))
+
+    # =========================
+    # DESCALIFICAR POR MÚLTIPLES COMENTARIOS
+    # =========================
+    descalificados_multiples = []
+
+    if excluir_multiples:
+        comments, disqualified_set = filter_multiple_comments(comments)
+        descalificados_multiples = sorted(disqualified_set)
+        print("DESCALIFICADOS (comentaron más de 1 vez):", len(descalificados_multiples))
+        print("COMMENTS TRAS DESCALIFICACION:", len(comments))
 
     usernames = []
     bet_ids = []
@@ -182,7 +197,8 @@ def analizar_post(
         "total_comments": len(comments),
         "unique_usernames": len(set(usernames)),
         "unique_bet_ids": len(set(bet_ids)),
-        "skipped_blacklist": meta.get("skipped_blacklist", 0)
+        "skipped_blacklist": meta.get("skipped_blacklist", 0),
+        "descalificados_multiples": len(descalificados_multiples)
     }
 
     return response_data
